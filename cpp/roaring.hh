@@ -58,7 +58,7 @@ public:
      * Construct a bitmap from a list of integer values.
      */
     Roaring(size_t n, const uint32_t *data) : Roaring() {
-        api::roaring_bitmap_add_many(&roaring, n, data);
+        api::roaring_bitmap_add_many(&roaring, n, data, false);
     }
 
     /**
@@ -144,7 +144,7 @@ public:
      * Add value n_args from pointer vals
      */
     void addMany(size_t n_args, const uint32_t *vals) {
-        api::roaring_bitmap_add_many(&roaring, n_args, vals);
+        api::roaring_bitmap_add_many(&roaring, n_args, vals, false);
     }
 
     /**

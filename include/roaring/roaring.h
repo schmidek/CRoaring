@@ -64,6 +64,11 @@ roaring_bitmap_t *roaring_bitmap_from_range(uint64_t min, uint64_t max,
  */
 roaring_bitmap_t *roaring_bitmap_of_ptr(size_t n_args, const uint32_t *vals);
 
+/**
+ * Creates a new bitmap from a pointer of uint32_t integers
+ */
+roaring_bitmap_t *roaring_bitmap_of_ptr_with_bitsets(size_t n_args, const uint32_t *vals);
+
 /*
  * Whether you want to use copy-on-write.
  * Saves memory and avoids copies, but needs more care in a threaded context.
@@ -301,7 +306,7 @@ void roaring_bitmap_add_bulk(roaring_bitmap_t *r,
  * elements in `vals`
  */
 void roaring_bitmap_add_many(roaring_bitmap_t *r, size_t n_args,
-                             const uint32_t *vals);
+                             const uint32_t *vals, const bool bitsetconversion);
 
 /**
  * Add value x

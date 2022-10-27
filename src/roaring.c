@@ -38,7 +38,7 @@ static inline bool is_frozen(const roaring_bitmap_t *r) {
 // container)
 static inline container_t *containerptr_roaring_bitmap_add(
     roaring_bitmap_t *r, uint32_t val,
-    uint8_t *type, int *index
+    uint8_t *type, int *index, uint8_t new_container_type
 ){
     roaring_array_t *ra = &r->high_low_container;
 
@@ -59,10 +59,21 @@ static inline container_t *containerptr_roaring_bitmap_add(
             return c;
         }
     } else {
-        array_container_t *new_ac = array_container_create();
-        container_t *c = container_add(new_ac, val & 0xFFFF,
-                                       ARRAY_CONTAINER_TYPE, type);
-        // we could just assume that it stays an array container
+        container_t* new_c;
+        switch (new_container_type) {
+            case BITSET_CONTAINER_TYPE: {
+                new_c = bitset_container_create();
+            } break;
+            case ARRAY_CONTAINER_TYPE: {
+                new_c = array_container_create();
+            } break;
+            default:
+                assert(false);
+                __builtin_unreachable();
+        }
+        container_t *c = container_add(new_c, val & 0xFFFF,
+                                       new_container_type, type);
+        // we could just assume that it stays the same type
         ra_insert_new_key_value_at(ra, -i - 1, hb, c, *type);
         *index = -i - 1;
         return c;
@@ -89,13 +100,13 @@ bool roaring_bitmap_init_with_capacity(roaring_bitmap_t *r, uint32_t cap) {
 
 static inline void add_bulk_impl(roaring_bitmap_t *r,
                                  roaring_bulk_context_t *context,
-                                 uint32_t val) {
+                                 uint32_t val, uint8_t new_container_type) {
     uint16_t key = val >> 16;
     if (context->container == NULL || context->key != key) {
         uint8_t typecode;
         int idx;
         context->container = containerptr_roaring_bitmap_add(
-            r, val, &typecode, &idx);
+            r, val, &typecode, &idx, new_container_type);
         context->typecode = typecode;
         context->idx = idx;
         context->key = key;
@@ -118,7 +129,7 @@ static inline void add_bulk_impl(roaring_bitmap_t *r,
 }
 
 void roaring_bitmap_add_many(roaring_bitmap_t *r, size_t n_args,
-                             const uint32_t *vals) {
+                             const uint32_t *vals, const bool bitsetconversion) {
     uint32_t val;
     const uint32_t *start = vals;
     const uint32_t *end = vals + n_args;
@@ -128,22 +139,18 @@ void roaring_bitmap_add_many(roaring_bitmap_t *r, size_t n_args,
         return;
     }
 
-    uint8_t typecode;
-    int idx;
-    container_t *container;
     val = *current_val;
-    container = containerptr_roaring_bitmap_add(r, val, &typecode, &idx);
-    roaring_bulk_context_t context = {container, idx, (uint16_t)(val >> 16), typecode};
+    roaring_bulk_context_t context = {0};
 
     for (; current_val != end; current_val++) {
         memcpy(&val, current_val, sizeof(val));
-        add_bulk_impl(r, &context, val);
+        add_bulk_impl(r, &context, val, bitsetconversion ? BITSET_CONTAINER_TYPE : ARRAY_CONTAINER_TYPE);
     }
 }
 
 void roaring_bitmap_add_bulk(roaring_bitmap_t *r,
                              roaring_bulk_context_t *context, uint32_t val) {
-    add_bulk_impl(r, context, val);
+    add_bulk_impl(r, context, val, ARRAY_CONTAINER_TYPE);
 }
 
 bool roaring_bitmap_contains_bulk(const roaring_bitmap_t *r,
@@ -176,7 +183,13 @@ bool roaring_bitmap_contains_bulk(const roaring_bitmap_t *r,
 
 roaring_bitmap_t *roaring_bitmap_of_ptr(size_t n_args, const uint32_t *vals) {
     roaring_bitmap_t *answer = roaring_bitmap_create();
-    roaring_bitmap_add_many(answer, n_args, vals);
+    roaring_bitmap_add_many(answer, n_args, vals, false);
+    return answer;
+}
+
+roaring_bitmap_t *roaring_bitmap_of_ptr_with_bitsets(size_t n_args, const uint32_t *vals) {
+    roaring_bitmap_t *answer = roaring_bitmap_create();
+    roaring_bitmap_add_many(answer, n_args, vals, true);
     return answer;
 }
 

@@ -106,7 +106,7 @@ void run_test(uint32_t spanlen, uint32_t intvlen, double density, order_t order)
         }
         RDTSC_START(cycles_start);
         for (int64_t i = 0; i < count; i++) {
-            roaring_bitmap_add_many(r, intvlen, values + (i * intvlen));
+            roaring_bitmap_add_many(r, intvlen, values + (i * intvlen), false);
         }
         RDTSC_FINAL(cycles_final);
         results[p] = (cycles_final - cycles_start) * 1.0 / count / intvlen;

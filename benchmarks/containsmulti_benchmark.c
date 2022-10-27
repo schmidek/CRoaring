@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
             printf("No integers found in %s\n", argv[i]);
             return 1;
         }
-        roaring_bitmap_add_many(bm, t_count, t_values);
+        roaring_bitmap_add_many(bm, t_count, t_values, false);
 
         shuffle_uint32(t_values, t_count);
 

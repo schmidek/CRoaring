@@ -313,6 +313,8 @@ void roaring_bitmap_add_many(roaring_bitmap_t *r, size_t n_args,
  */
 void roaring_bitmap_add(roaring_bitmap_t *r, uint32_t x);
 
+void roaring_bitmap_lazy_add(roaring_bitmap_t *r, uint32_t x);
+
 /**
  * Add value x
  * Returns true if a new value was added, false if the value already existed.

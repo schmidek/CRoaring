@@ -150,7 +150,7 @@ void roaring_bitmap_add_many(roaring_bitmap_t *r, size_t n_args,
 
 void roaring_bitmap_add_bulk(roaring_bitmap_t *r,
                              roaring_bulk_context_t *context, uint32_t val) {
-    add_bulk_impl(r, context, val, ARRAY_CONTAINER_TYPE);
+    add_bulk_impl(r, context, val, BITSET_CONTAINER_TYPE);
 }
 
 bool roaring_bitmap_contains_bulk(const roaring_bitmap_t *r,
@@ -499,6 +499,54 @@ void roaring_bitmap_add(roaring_bitmap_t *r, uint32_t val) {
         array_container_t *newac = array_container_create();
         container_t *container = container_add(newac, val & 0xFFFF,
                                         ARRAY_CONTAINER_TYPE, &typecode);
+        // we could just assume that it stays an array container
+        ra_insert_new_key_value_at(&r->high_low_container, -i - 1, hb,
+                                   container, typecode);
+    }
+}
+
+static inline void lazy_bitset_container_set(bitset_container_t *bitset, uint16_t pos) {
+    const int index = pos & 63;
+    bitset->words[pos >> 6] |= (UINT64_C(1) << index);
+}
+
+void roaring_bitmap_lazy_add(roaring_bitmap_t *r, uint32_t val) {
+    roaring_array_t *ra = &r->high_low_container;
+
+    const uint16_t hb = val >> 16;
+    const int i = ra_get_index(ra, hb);
+    uint8_t typecode;
+    uint32_t lb = val & 0xFFFF;
+    if (i >= 0) {
+        ra_unshare_container_at_index(&r->high_low_container, i);
+        container_t *c = ra_get_container_at_index(ra, i, &typecode);
+        switch (typecode) {
+            case BITSET_CONTAINER_TYPE:
+                lazy_bitset_container_set(CAST_bitset(c), lb);
+                break;
+            case ARRAY_CONTAINER_TYPE: {
+                array_container_t *ac = CAST_array(c);
+                if (array_container_try_add(ac, val, 32) == -1) {
+                    bitset_container_t* bitset = bitset_container_from_array(ac);
+                    bitset->cardinality = BITSET_UNKNOWN_CARDINALITY;
+                    lazy_bitset_container_set(bitset, lb);
+                    array_container_free(ac);
+                    ra_set_container_at_index(&r->high_low_container, i, bitset,
+                                              BITSET_CONTAINER_TYPE);
+                }
+            } break;
+            case RUN_CONTAINER_TYPE:
+                // per Java, no container type adjustments are done (revisit?)
+                run_container_add(CAST_run(c), lb);
+                break;
+            default:
+                assert(false);
+                __builtin_unreachable();
+        }
+    } else {
+        array_container_t *newac = array_container_create_given_capacity(4);
+        container_t *container = container_add(newac, lb,
+                                               ARRAY_CONTAINER_TYPE, &typecode);
         // we could just assume that it stays an array container
         ra_insert_new_key_value_at(&r->high_low_container, -i - 1, hb,
                                    container, typecode);

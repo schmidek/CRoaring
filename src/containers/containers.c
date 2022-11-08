@@ -36,6 +36,8 @@ extern inline container_t *container_iandnot(
         uint8_t *result_type);
 
 void container_free(container_t *c, uint8_t type) {
+    if (c == NULL)
+        return;
     switch (type) {
         case BITSET_CONTAINER_TYPE:
             bitset_container_free(CAST_bitset(c));

@@ -550,6 +550,7 @@ void convert_to_dense_containers(roaring_array_t *ra) {
         ra->containers[current] = old_containers[i];
         current++;
     }
+    assert(current == new_size);
     roaring_free(old_containers);
 }
 
@@ -576,7 +577,7 @@ void roaring_bitmap_lazy_add(roaring_bitmap_t *r, uint32_t val) {
         ra_unshare_container_at_index(&r->high_low_container, i);
         container_t *c = ra_get_container_at_index(ra, i, &typecode);
         if (c == NULL){ // lazy creation
-            c = array_container_create_given_capacity(0);
+            c = array_container_create_given_capacity(4);
             ra->containers[i] = c;
         }
         switch (typecode) {
@@ -2525,6 +2526,9 @@ void roaring_bitmap_lazy_or_inplace(roaring_bitmap_t *x1,
 
     if (0 == length1) {
         roaring_bitmap_overwrite(x1, x2);
+        if (is_dense(&x1->high_low_container)){
+            convert_to_dense_containers(&x1->high_low_container);
+        }
         return;
     }
     int pos1 = 0, pos2 = 0;
@@ -2545,7 +2549,7 @@ void roaring_bitmap_lazy_or_inplace(roaring_bitmap_t *x1,
                                               type2);
                 }
                 ra_set_container_at_index(&x1->high_low_container, pos1, c2,
-                                          result_type);
+                                          type2);
             }else if (!container_is_full(c1, type1)) {
                 if ((bitsetconversion == false) ||
                     (get_container_type(c1, type1) == BITSET_CONTAINER_TYPE)

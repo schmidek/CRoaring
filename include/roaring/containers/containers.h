@@ -239,6 +239,7 @@ static inline int container_get_cardinality(
     const container_t *c, uint8_t typecode
 ){
     c = container_unwrap_shared(c, &typecode);
+    if (c == NULL) return 0;
     switch (typecode) {
         case BITSET_CONTAINER_TYPE:
             return bitset_container_cardinality(const_CAST_bitset(c));

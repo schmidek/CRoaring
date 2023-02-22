@@ -238,6 +238,7 @@ static inline const char *get_full_container_name(
 static inline int container_get_cardinality(
     const container_t *c, uint8_t typecode
 ){
+    if (c == NULL) return 0;
     c = container_unwrap_shared(c, &typecode);
     if (c == NULL) return 0;
     switch (typecode) {

@@ -127,6 +127,18 @@ void ra_append_copy_range(roaring_array_t *ra, const roaring_array_t *sa,
                           int32_t start_index, int32_t end_index,
                           bool copy_on_write);
 
+/**
+ * Append new key-value pairs to ra, cloning (in COW sense)  values from sa
+ * at indexes
+ * [start_index, end_index)
+ */
+void ra_append_copy_range_dense(roaring_array_t *ra, const roaring_array_t *sa,
+                          int32_t start_index, int32_t end_index,
+                          bool copy_on_write);
+
+void ra_append_copy_range_dense_owned(roaring_array_t *ra, const roaring_array_t *sa,
+                                int32_t start_index, int32_t end_index);
+
 /** appends from sa to ra, ending with the greatest key that is
  * is less or equal stopping_key
  */

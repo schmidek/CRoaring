@@ -12,7 +12,7 @@ During lazy computations, we can transform array containers into bitset
 containers as
 long as we can expect them to have  ARRAY_LAZY_LOWERBOUND values.
 */
-enum { ARRAY_LAZY_LOWERBOUND = 1024 };
+enum { ARRAY_LAZY_LOWERBOUND = 64 };
 
 /* default initial size of a run container
    setting it to zero delays the malloc.*/

@@ -131,6 +131,9 @@ void roaring_bitmap_printf(const roaring_bitmap_t *r);
 roaring_bitmap_t *roaring_bitmap_and(const roaring_bitmap_t *r1,
                                      const roaring_bitmap_t *r2);
 
+roaring_bitmap_t *roaring_bitmap_lazy_and(const roaring_bitmap_t *r1,
+                                     const roaring_bitmap_t *r2);
+
 /**
  * Computes the size of the intersection between two bitmaps.
  */
@@ -244,6 +247,9 @@ roaring_bitmap_t *roaring_bitmap_andnot(const roaring_bitmap_t *r1,
  * Inplace version of roaring_bitmap_andnot, modifies r1, r1 != r2.
  */
 void roaring_bitmap_andnot_inplace(roaring_bitmap_t *r1,
+                                   const roaring_bitmap_t *r2);
+
+void roaring_bitmap_lazy_andnot_inplace(roaring_bitmap_t *r1,
                                    const roaring_bitmap_t *r2);
 
 /**
@@ -630,6 +636,8 @@ bool roaring_bitmap_is_subset(const roaring_bitmap_t *r1,
 bool roaring_bitmap_is_strict_subset(const roaring_bitmap_t *r1,
                                      const roaring_bitmap_t *r2);
 
+void roaring_bitmap_convert_to_lazy(roaring_bitmap_t *r);
+
 /**
  * (For expert users who seek high performance.)
  *
@@ -659,6 +667,10 @@ roaring_bitmap_t *roaring_bitmap_lazy_or(const roaring_bitmap_t *r1,
  */
 void roaring_bitmap_lazy_or_inplace(roaring_bitmap_t *r1,
                                     const roaring_bitmap_t *r2,
+                                    const bool bitsetconversion);
+
+void roaring_bitmap_lazy_or_inplace_owned(roaring_bitmap_t *r1,
+                                          roaring_bitmap_t *r2,
                                     const bool bitsetconversion);
 
 /**

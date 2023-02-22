@@ -129,8 +129,11 @@ bool ra_overwrite(const roaring_array_t *source, roaring_array_t *dest,
     // we go through the containers, turning them into shared containers...
     if (copy_on_write) {
         for (int32_t i = 0; i < dest->size; ++i) {
-            source->containers[i] = get_copy_of_container(
-                source->containers[i], &source->typecodes[i], copy_on_write);
+            if (source->containers[i] != NULL) {
+                source->containers[i] =
+                    get_copy_of_container(source->containers[i],
+                                          &source->typecodes[i], copy_on_write);
+            }
         }
         // we do a shallow copy to the other bitmap
         memcpy(dest->containers, source->containers,
@@ -141,6 +144,10 @@ bool ra_overwrite(const roaring_array_t *source, roaring_array_t *dest,
         memcpy(dest->typecodes, source->typecodes,
                dest->size * sizeof(uint8_t));
         for (int32_t i = 0; i < dest->size; i++) {
+            if (source->containers[i] == NULL){
+                dest->containers[i] = NULL;
+                continue;
+            }
             dest->containers[i] =
                 container_clone(source->containers[i], source->typecodes[i]);
             if (dest->containers[i] == NULL) {
@@ -255,6 +262,52 @@ void ra_append_copy_range(roaring_array_t *ra, const roaring_array_t *sa,
             ra->containers[pos] =
                 container_clone(sa->containers[i], sa->typecodes[i]);
             ra->typecodes[pos] = sa->typecodes[i];
+        }
+        ra->size++;
+    }
+}
+
+void ra_append_copy_range_dense(roaring_array_t *ra, const roaring_array_t *sa,
+                          int32_t start_index, int32_t end_index,
+                          bool copy_on_write) {
+    extend_array(ra, end_index - start_index);
+    for (int32_t i = start_index; i < end_index; ++i) {
+        const int32_t pos = ra->size;
+        ra->keys[pos] = sa->keys[i];
+        if (sa->containers[i] == NULL){
+            ra->containers[pos] = 0;
+            ra->typecodes[pos] = sa->typecodes[i];
+        }else {
+            if (copy_on_write) {
+                sa->containers[i] = get_copy_of_container(
+                    sa->containers[i], &sa->typecodes[i], copy_on_write);
+                ra->containers[pos] = sa->containers[i];
+                ra->typecodes[pos] = sa->typecodes[i];
+            } else {
+                ra->containers[pos] =
+                    container_clone(sa->containers[i], sa->typecodes[i]);
+                ra->typecodes[pos] = sa->typecodes[i];
+            }
+        }
+        ra->size++;
+    }
+}
+
+void ra_append_copy_range_dense_owned(roaring_array_t *ra, const roaring_array_t *sa,
+                                int32_t start_index, int32_t end_index) {
+    extend_array(ra, end_index - start_index);
+    for (int32_t i = start_index; i < end_index; ++i) {
+        const int32_t pos = ra->size;
+        ra->keys[pos] = sa->keys[i];
+        if (sa->containers[i] == NULL){
+            ra->containers[pos] = 0;
+            ra->typecodes[pos] = sa->typecodes[i];
+        }else {
+            ra->containers[pos] = sa->containers[i];
+            ra->typecodes[pos] = sa->typecodes[i];
+            // we stole sa's container
+            sa->containers[i] = 0;
+            sa->typecodes[i] = ARRAY_CONTAINER_TYPE;
         }
         ra->size++;
     }

@@ -117,16 +117,24 @@ bool run_bitset_container_intersection(
     const run_container_t *src_1, const bitset_container_t *src_2,
     container_t **dst
 ){
+    int src_2_cardinality = src_2->cardinality;
+    if (src_2_cardinality == BITSET_UNKNOWN_CARDINALITY){
+        src_2_cardinality = bitset_container_compute_cardinality(src_2);
+    }
     if (run_container_is_full(src_1)) {
-        if (*dst != src_2) *dst = bitset_container_clone(src_2);
+        if (*dst != src_2){
+            bitset_container_t *answer = bitset_container_clone(src_2);
+            answer->cardinality = src_2_cardinality;
+            *dst = answer;
+        }
         return true;
     }
     int32_t card = run_container_cardinality(src_1);
     if (card <= DEFAULT_MAX_SIZE) {
         // result can only be an array (assuming that we never make a
         // RunContainer)
-        if (card > src_2->cardinality) {
-            card = src_2->cardinality;
+        if (card > src_2_cardinality) {
+            card = src_2_cardinality;
         }
         array_container_t *answer = array_container_create_given_capacity(card);
         *dst = answer;
@@ -157,7 +165,7 @@ bool run_bitset_container_intersection(
         }
         bitset_reset_range(src_2->words, start, UINT32_C(1) << 16);
         answer->cardinality = bitset_container_compute_cardinality(answer);
-        if (src_2->cardinality > DEFAULT_MAX_SIZE) {
+        if (src_2_cardinality > DEFAULT_MAX_SIZE) {
             return true;
         } else {
             array_container_t *newanswer = array_container_from_bitset(src_2);

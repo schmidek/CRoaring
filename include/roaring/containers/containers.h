@@ -1992,8 +1992,11 @@ static inline container_t *container_iandnot(
             return result;
 
         case CONTAINER_PAIR(BITSET,ARRAY):
+            if (CAST_bitset(c1)->cardinality == BITSET_UNKNOWN_CARDINALITY){
+                CAST_bitset(c1)->cardinality = bitset_container_compute_cardinality(CAST_bitset(c1));
+            }
             *result_type = bitset_array_container_iandnot(
-                                CAST_bitset(c1),
+                               CAST_bitset(c1),
                                 const_CAST_array(c2), &result)
                                     ? BITSET_CONTAINER_TYPE
                                     : ARRAY_CONTAINER_TYPE;

@@ -876,6 +876,115 @@ roaring_bitmap_t *roaring_bitmap_or_many(size_t number,
     return answer;
 }
 
+/*
+ * Computes the intersection between rs and all others and removes the intersection
+ */
+roaring_bitmap_t **roaring_bitmap_and_andnot_many(roaring_bitmap_t *rs,
+                                                  size_t number,
+                                                  roaring_bitmap_t **others) {
+    roaring_bitmap_t **ret =
+        (roaring_bitmap_t **)roaring_malloc(sizeof(roaring_bitmap_t *) * number);
+    int *positions =
+        (int *)roaring_malloc(sizeof(int) * number);
+    int *lengths =
+        (int *)roaring_malloc(sizeof(int) * number);
+    bool *others_has_null_gaps =
+        (bool *)roaring_malloc(sizeof(bool) * number);
+
+    bool has_null_gaps = false;
+    const int length = rs->high_low_container.size;
+    for (size_t i = 0; i < number; i++) {
+        roaring_bitmap_t *other = others[i];
+        const int lengthother = other->high_low_container.size;
+        uint32_t neededcap = length > lengthother ? lengthother : length;
+        roaring_bitmap_t *answer = roaring_bitmap_create_with_capacity(neededcap);
+        roaring_bitmap_set_copy_on_write(answer, is_cow(rs) || is_cow(other));
+        ret[i] = answer;
+        positions[i] = 0;
+        lengths[i] = other->high_low_container.size;
+        others_has_null_gaps[i] = false;
+    }
+    int pos = 0;
+
+    while (pos < length) {
+        const uint16_t s = ra_get_key_at_index(&rs->high_low_container, pos);
+        uint8_t type;
+        container_t *c = ra_get_container_at_index(
+            &rs->high_low_container, pos, &type);
+        if (type == SHARED_CONTAINER_TYPE) {
+            assert(false);
+        }
+
+        for (size_t i = 0; i < number; i++) {
+            int posother = positions[i];
+            const int lengthother = lengths[i];
+            if (posother >= lengthother) {
+                continue;
+            }
+            roaring_bitmap_t *other = others[i];
+            uint16_t sother = ra_get_key_at_index(&other->high_low_container, posother);
+            if (sother < s) {
+                posother = ra_advance_until(&other->high_low_container, s, posother);
+                positions[i] = posother;
+                if (posother >= lengthother) {
+                    continue;
+                }
+                sother = ra_get_key_at_index(&other->high_low_container, posother);
+            }
+            if (s == sother) {
+                uint8_t typeother;
+                container_t *cother = ra_get_container_at_index(
+                    &other->high_low_container, posother, &typeother);
+                if (typeother == SHARED_CONTAINER_TYPE) {
+                    assert(false);
+                }
+                uint8_t typeand = 0;
+                container_t *cand = container_and(c, type, cother, typeother, &typeand);
+
+                if (container_nonzero_cardinality(cand, typeand)) {
+                    ra_append(&ret[i]->high_low_container, s, cand, typeand);
+
+                    // remove cand from both
+                    cother = container_iandnot(cother, typeother, cand, typeand, &typeother);
+                    if (container_nonzero_cardinality(cother, typeother)) {
+                        other->high_low_container.typecodes[posother] = typeother;
+                    } else {
+                        container_free(cother, typeother);
+                        cother = NULL;
+                        others_has_null_gaps[i] = true;
+                    }
+                    other->high_low_container.containers[posother] = cother;
+                    c = container_iandnot(c, type, cand, typeand, &type);
+                    if (container_nonzero_cardinality(c, type)) {
+                        rs->high_low_container.containers[pos] = c;
+                        rs->high_low_container.typecodes[pos] = type;
+                    } else {
+                        container_free(c, type);
+                        has_null_gaps = true;
+                        rs->high_low_container.containers[pos] = NULL;
+                        break;
+                    }
+                } else {
+                    container_free(cand, typeand);  // otherwise: memory leak!
+                }
+            }
+        }
+        ++pos;
+    }
+    roaring_free(positions);
+    roaring_free(lengths);
+    if (has_null_gaps) {
+        roaring_bitmap_repair_null_gaps(rs);
+    }
+    for (size_t i = 0; i < number; i++) {
+        if (others_has_null_gaps[i]) {
+            roaring_bitmap_repair_null_gaps(others[i]);
+        }
+    }
+    roaring_free(others_has_null_gaps);
+    return ret;
+}
+
 /**
  * Compute the xor of 'number' bitmaps.
  */
@@ -3071,6 +3180,21 @@ void roaring_bitmap_repair_after_lazy(roaring_bitmap_t *r) {
         container_t *new_c = container_repair_after_lazy(old_c, &new_type);
         ra->containers[current] = new_c;
         ra->typecodes[current] = new_type;
+        ra->keys[current] = ra->keys[i];
+        current++;
+    }
+    ra->size = current;
+}
+
+void roaring_bitmap_repair_null_gaps(roaring_bitmap_t *r) {
+    roaring_array_t *ra = &r->high_low_container;
+    int32_t old_size = ra->size;
+    int current = 0;
+    for (int i = 0; i < old_size; ++i) {
+        container_t *old_c = ra->containers[i];
+        if (old_c == NULL) continue;
+        ra->containers[current] = old_c;
+        ra->typecodes[current] = ra->typecodes[i];
         ra->keys[current] = ra->keys[i];
         current++;
     }

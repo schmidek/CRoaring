@@ -217,6 +217,14 @@ roaring_bitmap_t *roaring_bitmap_or_many_heap(uint32_t number,
                                               const roaring_bitmap_t **rs);
 
 /**
+ * Computes the intersection between rs and all others and removes the intersection
+ * Caller is responsible for freeing the result.
+ */
+roaring_bitmap_t **roaring_bitmap_and_andnot_many(roaring_bitmap_t *rs,
+                                                  size_t number,
+                                                  roaring_bitmap_t **others);
+
+/**
  * Computes the symmetric difference (xor) between two bitmaps
  * and returns new bitmap. The caller is responsible for memory management.
  */
@@ -680,6 +688,8 @@ void roaring_bitmap_lazy_or_inplace_owned(roaring_bitmap_t *r1,
  * or modified with `roaring_bitmap_lazy_or_inplace()`.
  */
 void roaring_bitmap_repair_after_lazy(roaring_bitmap_t *r1);
+
+void roaring_bitmap_repair_null_gaps(roaring_bitmap_t *r1);
 
 /**
  * Computes the symmetric difference between two bitmaps and returns new bitmap.

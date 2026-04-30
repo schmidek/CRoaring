@@ -373,6 +373,25 @@ void roaring_bitmap_printf_describe(const roaring_bitmap_t *r) {
     printf("}");
 }
 
+roaring_bitmap_t *roaring_bitmap_container_bitmap(const roaring_bitmap_t *r) {
+    roaring_bitmap_t *answer = roaring_bitmap_create();
+    const roaring_array_t *ra = &r->high_low_container;
+    for (int i = 0; i < ra->size; ++i) {
+        roaring_bitmap_add(answer, ra->keys[i]);
+    }
+    return answer;
+}
+
+roaring_bitmap_t *roaring_bitmap_lazy_container_bitmap(const roaring_bitmap_t *r) {
+    roaring_bitmap_t *answer = roaring_bitmap_create();
+    const roaring_array_t *ra = &r->high_low_container;
+    for (int i = 0; i < ra->size; ++i) {
+        if (ra->containers[i] == NULL) continue;
+        roaring_bitmap_lazy_add(answer, ra->keys[i]);
+    }
+    return answer;
+}
+
 bool keys_ordered(const roaring_bitmap_t *r) {
     const roaring_array_t *ra = &r->high_low_container;
 

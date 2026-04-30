@@ -124,6 +124,10 @@ bool roaring_bitmap_overwrite(roaring_bitmap_t *dest,
  */
 void roaring_bitmap_printf(const roaring_bitmap_t *r);
 
+roaring_bitmap_t *roaring_bitmap_container_bitmap(const roaring_bitmap_t *r);
+
+roaring_bitmap_t *roaring_bitmap_lazy_container_bitmap(const roaring_bitmap_t *r);
+
 /**
  * Computes the intersection between two bitmaps and returns new bitmap. The
  * caller is responsible for memory management.

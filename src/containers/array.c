@@ -4,10 +4,12 @@
  */
 
 #include <assert.h>
-#include <roaring/memory.h>
 #include <roaring/containers/array.h>
+#include <roaring/memory.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "roaring_array.h"
 
 #ifdef __cplusplus
 extern "C" { namespace roaring { namespace internal {
@@ -263,10 +265,6 @@ void array_container_xor(const array_container_t *array_1,
         xor_uint16(array_1->array, array_1->cardinality, array_2->array,
                    array_2->cardinality, out->array);
 #endif
-}
-
-static inline int32_t minimum_int32(int32_t a, int32_t b) {
-    return (a < b) ? a : b;
 }
 
 /* computes the intersection of array1 and array2 and write the result to

@@ -531,6 +531,19 @@ roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe(const char *buf,
                                                            size_t maxbytes);
 
 /**
+ * Read bitmap from a serialized buffer safely (reading up to maxbytes).
+ * In case of failure, NULL is returned.
+ * Only reads container whose key is present in container_bitmap
+ *
+ * This is meant to be compatible with the Java and Go versions:
+ * https://github.com/RoaringBitmap/RoaringFormatSpec
+ */
+roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe_with_container_bitmap(
+                                                           const char *buf,
+                                                           size_t maxbytes,
+                                                           const roaring_bitmap_t *container_bitmap);
+
+/**
  * Check how many bytes would be read (up to maxbytes) at this pointer if there
  * is a bitmap, returns zero if there is no valid bitmap.
  *

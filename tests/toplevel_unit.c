@@ -26,10 +26,6 @@ inline static unsigned int our_rand() {  // we do not want to depend on a system
     return seed & OUR_RAND_MAX;
 }
 
-static inline uint32_t minimum_uint32(uint32_t a, uint32_t b) {
-    return (a < b) ? a : b;
-}
-
 // arrays expected to both be sorted.
 static int array_equals(uint32_t *a1, int32_t size1, uint32_t *a2,
                         int32_t size2) {

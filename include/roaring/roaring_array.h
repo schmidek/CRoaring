@@ -2,11 +2,12 @@
 #define INCLUDE_ROARING_ARRAY_H
 
 #include <assert.h>
+#include <roaring/array_util.h>
+#include <roaring/containers/containers.h>  // get_writable_copy_if_shared()
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <roaring/containers/containers.h>  // get_writable_copy_if_shared()
-#include <roaring/array_util.h>
+#include "roaring.h"
 
 #ifdef __cplusplus
 extern "C" { namespace roaring {
@@ -232,6 +233,10 @@ size_t ra_portable_serialize(const roaring_array_t *ra, char *buf);
  */
 bool ra_portable_deserialize(roaring_array_t *ra, const char *buf, const size_t maxbytes, size_t * readbytes);
 
+bool ra_portable_deserialize_with_container_bitmap(roaring_array_t *ra, const char *buf,
+                                                   const size_t maxbytes, size_t * readbytes,
+                                                   const roaring_bitmap_t *container_bitmap);
+
 /**
  * Quickly checks whether there is a serialized bitmap at the pointer,
  * not exceeding size "maxbytes" in bytes. This function does not allocate
@@ -316,6 +321,18 @@ void ra_copy_range(roaring_array_t *ra, uint32_t begin, uint32_t end,
  * Caller is responsible for that.
  */
 void ra_shift_tail(roaring_array_t *ra, int32_t count, int32_t distance);
+
+static inline uint32_t minimum_uint32(uint32_t a, uint32_t b) {
+    return (a < b) ? a : b;
+}
+
+static inline uint64_t minimum_uint64(uint64_t a, uint64_t b) {
+    return (a < b) ? a : b;
+}
+
+static inline int32_t minimum_int32(int32_t a, int32_t b) {
+    return (a < b) ? a : b;
+}
 
 #ifdef __cplusplus
 }  // namespace internal

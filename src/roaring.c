@@ -208,14 +208,6 @@ roaring_bitmap_t *roaring_bitmap_of(size_t n_args, ...) {
     return answer;
 }
 
-static inline uint32_t minimum_uint32(uint32_t a, uint32_t b) {
-    return (a < b) ? a : b;
-}
-
-static inline uint64_t minimum_uint64(uint64_t a, uint64_t b) {
-    return (a < b) ? a : b;
-}
-
 roaring_bitmap_t *roaring_bitmap_from_range(uint64_t min, uint64_t max,
                                             uint32_t step) {
     if(max >= UINT64_C(0x100000000)) {
@@ -1714,7 +1706,6 @@ roaring_bitmap_t *roaring_bitmap_portable_deserialize(const char *buf) {
     return roaring_bitmap_portable_deserialize_safe(buf, SIZE_MAX);
 }
 
-
 size_t roaring_bitmap_portable_deserialize_size(const char *buf, size_t maxbytes) {
   return ra_portable_deserialize_size(buf, maxbytes);
 }
@@ -1725,6 +1716,25 @@ bool roaring_bitmap_portable_deserialize_cardinality(const char *buf,
   return ra_portable_deserialize_cardinality(buf, maxbytes, cardinality);
 }
 
+roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe_with_container_bitmap(
+    const char *buf,
+    size_t maxbytes,
+    const roaring_bitmap_t *container_bitmap) {
+  roaring_bitmap_t *ans =
+      (roaring_bitmap_t *)roaring_malloc(sizeof(roaring_bitmap_t));
+  if (ans == NULL) {
+        return NULL;
+  }
+  size_t bytesread;
+  bool is_ok = ra_portable_deserialize_with_container_bitmap(&ans->high_low_container, buf, maxbytes, &bytesread, container_bitmap);
+  if(is_ok) assert(bytesread <= maxbytes);
+  roaring_bitmap_set_copy_on_write(ans, false);
+  if (!is_ok) {
+        roaring_free(ans);
+        return NULL;
+  }
+  return ans;
+}
 
 size_t roaring_bitmap_portable_serialize(const roaring_bitmap_t *r,
                                          char *buf) {

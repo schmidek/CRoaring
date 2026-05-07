@@ -383,6 +383,8 @@ bool roaring_bitmap_remove_checked(roaring_bitmap_t *r, uint32_t x);
  */
 bool roaring_bitmap_contains(const roaring_bitmap_t *r, uint32_t val);
 
+bool roaring_bitmap_lazy_contains(const roaring_bitmap_t *r, uint32_t val);
+
 /**
  * Check whether a range of values from range_start (included)
  * to range_end (excluded) is present

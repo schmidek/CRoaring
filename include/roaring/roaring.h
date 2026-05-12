@@ -128,6 +128,8 @@ roaring_bitmap_t *roaring_bitmap_container_bitmap(const roaring_bitmap_t *r);
 
 roaring_bitmap_t *roaring_bitmap_lazy_container_bitmap(const roaring_bitmap_t *r);
 
+roaring_bitmap_t *roaring_bitmap_lazy_block_max_bitmap(const roaring_bitmap_t *r, uint16_t block_size);
+
 /**
  * Computes the intersection between two bitmaps and returns new bitmap. The
  * caller is responsible for memory management.
@@ -542,6 +544,20 @@ roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe_with_container_bitmap
                                                            const char *buf,
                                                            size_t maxbytes,
                                                            const roaring_bitmap_t *container_bitmap);
+
+/**
+ * Read bitmap from a serialized buffer safely (reading up to maxbytes).
+ * In case of failure, NULL is returned.
+ * Only reads container sub-blocks whose key is present in block_max
+ *
+ * This is meant to be compatible with the Java and Go versions:
+ * https://github.com/RoaringBitmap/RoaringFormatSpec
+ */
+roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe_with_block_max(
+    const char *buf,
+    size_t maxbytes,
+    const roaring_bitmap_t *block_max,
+    uint16_t block_size);
 
 /**
  * Check how many bytes would be read (up to maxbytes) at this pointer if there

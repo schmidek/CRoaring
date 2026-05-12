@@ -384,6 +384,60 @@ roaring_bitmap_t *roaring_bitmap_lazy_container_bitmap(const roaring_bitmap_t *r
     return answer;
 }
 
+roaring_bitmap_t *roaring_bitmap_lazy_block_max_bitmap(const roaring_bitmap_t *r, const uint16_t block_size) {
+    assert(block_size % 64 == 0);
+    roaring_bitmap_t *answer = roaring_bitmap_create();
+    const roaring_array_t *ra = &r->high_low_container;
+    for (int i = 0; i < ra->size; ++i) {
+        container_t *c = ra->containers[i];
+        if (c == NULL) continue;
+        uint16_t key = ra->keys[i];
+        uint32_t base_block = (uint32_t)key * (65536 / block_size);
+        switch (ra->typecodes[i]) {
+            case BITSET_CONTAINER_TYPE: {
+                bitset_container_t *bitset = CAST_bitset(c);
+                int words_per_block = block_size / 64;
+                for (int w = 0; w < BITSET_CONTAINER_SIZE_IN_WORDS; w += words_per_block) {
+                    for (int j = 0; j < words_per_block; j++) {
+                        if (bitset->words[w + j] != 0) {
+                            roaring_bitmap_lazy_add(answer, base_block + w / words_per_block);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            case ARRAY_CONTAINER_TYPE: {
+                array_container_t *array = CAST_array(c);
+                uint32_t prev_block = UINT32_MAX;
+                for (int j = 0; j < array->cardinality; j++) {
+                    uint32_t block = base_block + array->array[j] / block_size;
+                    if (block != prev_block) {
+                        roaring_bitmap_lazy_add(answer, block);
+                        prev_block = block;
+                    }
+                }
+                break;
+            }
+            case RUN_CONTAINER_TYPE: {
+                run_container_t *run = CAST_run(c);
+                for (int j = 0; j < run->n_runs; j++) {
+                    uint32_t start_block = base_block + run->runs[j].value / block_size;
+                    uint32_t end_val = (uint32_t)run->runs[j].value + run->runs[j].length;
+                    uint32_t end_block = base_block + end_val / block_size;
+                    for (uint32_t b = start_block; b <= end_block; b++) {
+                        roaring_bitmap_lazy_add(answer, b);
+                    }
+                }
+                break;
+            }
+            default:
+                __builtin_unreachable();
+        }
+    }
+    return answer;
+}
+
 bool keys_ordered(const roaring_bitmap_t *r) {
     const roaring_array_t *ra = &r->high_low_container;
 
@@ -1727,6 +1781,27 @@ roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe_with_container_bitmap
   }
   size_t bytesread;
   bool is_ok = ra_portable_deserialize_with_container_bitmap(&ans->high_low_container, buf, maxbytes, &bytesread, container_bitmap);
+  if(is_ok) assert(bytesread <= maxbytes);
+  roaring_bitmap_set_copy_on_write(ans, false);
+  if (!is_ok) {
+        roaring_free(ans);
+        return NULL;
+  }
+  return ans;
+}
+
+roaring_bitmap_t *roaring_bitmap_portable_deserialize_safe_with_block_max(
+    const char *buf,
+    size_t maxbytes,
+    const roaring_bitmap_t *block_max,
+    uint16_t block_size) {
+  roaring_bitmap_t *ans =
+      (roaring_bitmap_t *)roaring_malloc(sizeof(roaring_bitmap_t));
+  if (ans == NULL) {
+        return NULL;
+  }
+  size_t bytesread;
+  bool is_ok = ra_portable_deserialize_with_block_max(&ans->high_low_container, buf, maxbytes, &bytesread, block_max, block_size);
   if(is_ok) assert(bytesread <= maxbytes);
   roaring_bitmap_set_copy_on_write(ans, false);
   if (!is_ok) {

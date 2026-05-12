@@ -237,6 +237,11 @@ bool ra_portable_deserialize_with_container_bitmap(roaring_array_t *ra, const ch
                                                    const size_t maxbytes, size_t * readbytes,
                                                    const roaring_bitmap_t *container_bitmap);
 
+bool ra_portable_deserialize_with_block_max(roaring_array_t *ra, const char *buf,
+                                            const size_t maxbytes, size_t * readbytes,
+                                            const roaring_bitmap_t *block_max,
+                                            const uint16_t block_size);
+
 /**
  * Quickly checks whether there is a serialized bitmap at the pointer,
  * not exceeding size "maxbytes" in bytes. This function does not allocate

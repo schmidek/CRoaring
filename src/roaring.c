@@ -385,7 +385,7 @@ roaring_bitmap_t *roaring_bitmap_lazy_container_bitmap(const roaring_bitmap_t *r
 }
 
 roaring_bitmap_t *roaring_bitmap_lazy_block_max_bitmap(const roaring_bitmap_t *r, const uint16_t block_size) {
-    assert(block_size % 64 == 0);
+    assert(block_size > 0 && (block_size & (block_size - 1)) == 0);  // power of 2
     roaring_bitmap_t *answer = roaring_bitmap_create();
     const roaring_array_t *ra = &r->high_low_container;
     for (int i = 0; i < ra->size; ++i) {
@@ -396,12 +396,27 @@ roaring_bitmap_t *roaring_bitmap_lazy_block_max_bitmap(const roaring_bitmap_t *r
         switch (ra->typecodes[i]) {
             case BITSET_CONTAINER_TYPE: {
                 bitset_container_t *bitset = CAST_bitset(c);
-                int words_per_block = block_size / 64;
-                for (int w = 0; w < BITSET_CONTAINER_SIZE_IN_WORDS; w += words_per_block) {
-                    for (int j = 0; j < words_per_block; j++) {
-                        if (bitset->words[w + j] != 0) {
-                            roaring_bitmap_lazy_add(answer, base_block + w / words_per_block);
-                            break;
+                if (block_size >= 64) {
+                    int words_per_block = block_size / 64;
+                    for (int w = 0; w < BITSET_CONTAINER_SIZE_IN_WORDS; w += words_per_block) {
+                        for (int j = 0; j < words_per_block; j++) {
+                            if (bitset->words[w + j] != 0) {
+                                roaring_bitmap_lazy_add(answer, base_block + w / words_per_block);
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    uint32_t blocks_per_word = 64 / block_size;
+                    uint64_t block_mask = (UINT64_C(1) << block_size) - 1;
+                    for (int w = 0; w < BITSET_CONTAINER_SIZE_IN_WORDS; w++) {
+                        uint64_t word = bitset->words[w];
+                        if (word == 0) continue;
+                        uint32_t word_base_block = base_block + (uint32_t)w * blocks_per_word;
+                        for (uint32_t b = 0; b < blocks_per_word; b++) {
+                            if ((word >> (b * block_size)) & block_mask) {
+                                roaring_bitmap_lazy_add(answer, word_base_block + b);
+                            }
                         }
                     }
                 }

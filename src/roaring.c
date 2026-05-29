@@ -1700,6 +1700,12 @@ size_t roaring_bitmap_portable_deserialize_size(const char *buf, size_t maxbytes
   return ra_portable_deserialize_size(buf, maxbytes);
 }
 
+bool roaring_bitmap_portable_deserialize_cardinality(const char *buf,
+                                                    size_t maxbytes,
+                                                    uint64_t *cardinality) {
+  return ra_portable_deserialize_cardinality(buf, maxbytes, cardinality);
+}
+
 
 size_t roaring_bitmap_portable_serialize(const roaring_bitmap_t *r,
                                          char *buf) {

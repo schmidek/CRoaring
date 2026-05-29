@@ -535,6 +535,20 @@ size_t roaring_bitmap_portable_deserialize_size(const char *buf,
                                                 size_t maxbytes);
 
 /**
+ * Read the cardinality of a serialized bitmap without fully deserializing it.
+ * Reads up to maxbytes bytes from buf. Returns true on success and writes the
+ * cardinality to *cardinality. Returns false if the buffer does not contain a
+ * valid serialized bitmap.
+ *
+ * No containers are allocated; only the serialized header and the per-container
+ * cardinality field are inspected. This is meant to be compatible with the Java
+ * and Go versions: https://github.com/RoaringBitmap/RoaringFormatSpec
+ */
+bool roaring_bitmap_portable_deserialize_cardinality(const char *buf,
+                                                     size_t maxbytes,
+                                                     uint64_t *cardinality);
+
+/**
  * How many bytes are required to serialize this bitmap.
  *
  * This is meant to be compatible with the Java and Go versions:

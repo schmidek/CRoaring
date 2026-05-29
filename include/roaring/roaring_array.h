@@ -243,6 +243,15 @@ bool ra_portable_deserialize(roaring_array_t *ra, const char *buf, const size_t 
 size_t ra_portable_deserialize_size(const char *buf, const size_t maxbytes);
 
 /**
+ * Read the cardinality of a serialized bitmap (compatible with the Java and Go
+ * versions) without allocating any containers.  Reads up to maxbytes bytes from
+ * buf.  Returns true on success and writes the cardinality to *cardinality.
+ * Returns false if the buffer does not contain a valid serialized bitmap.
+ */
+bool ra_portable_deserialize_cardinality(const char *buf, const size_t maxbytes,
+                                         uint64_t *cardinality);
+
+/**
  * How many bytes are required to serialize this bitmap (meant to be
  * compatible
  * with Java and Go versions)

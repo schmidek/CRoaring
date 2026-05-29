@@ -743,6 +743,54 @@ size_t ra_portable_deserialize_size(const char *buf, const size_t maxbytes) {
     return bytestotal;
 }
 
+// Reads the cardinality of a portable-serialized bitmap (reading up to maxbytes
+// bytes) without allocating any containers. Returns true on success and writes
+// the cardinality to *cardinality. Returns false if the buffer does not contain
+// a valid serialized bitmap.
+bool ra_portable_deserialize_cardinality(const char *buf, const size_t maxbytes,
+                                         uint64_t *cardinality) {
+    size_t bytestotal = sizeof(int32_t);  // for cookie
+    if (bytestotal > maxbytes) return false;
+    uint32_t cookie;
+    memcpy(&cookie, buf, sizeof(int32_t));
+    buf += sizeof(uint32_t);
+    if ((cookie & 0xFFFF) != SERIAL_COOKIE &&
+        cookie != SERIAL_COOKIE_NO_RUNCONTAINER) {
+        return false;
+    }
+    int32_t size;
+
+    if ((cookie & 0xFFFF) == SERIAL_COOKIE) {
+        size = (cookie >> 16) + 1;
+    } else {
+        bytestotal += sizeof(int32_t);
+        if (bytestotal > maxbytes) return false;
+        memcpy(&size, buf, sizeof(int32_t));
+        buf += sizeof(uint32_t);
+    }
+    if (size < 0 || size > (1 << 16)) {
+        return false;  // logically impossible
+    }
+    bool hasrun = (cookie & 0xFFFF) == SERIAL_COOKIE;
+    if (hasrun) {
+        int32_t s = (size + 7) / 8;
+        bytestotal += s;
+        if (bytestotal > maxbytes) return false;
+        buf += s;
+    }
+    bytestotal += (size_t)size * 2 * sizeof(uint16_t);
+    if (bytestotal > maxbytes) return false;
+    uint64_t card = 0;
+    for (int32_t k = 0; k < size; ++k) {
+        uint16_t tmp;
+        memcpy(&tmp, buf + 2 * sizeof(uint16_t) * k + sizeof(uint16_t),
+               sizeof(tmp));
+        card += (uint32_t)tmp + 1;
+    }
+    *cardinality = card;
+    return true;
+}
+
 
 // this function populates answer from the content of buf (reading up to maxbytes bytes).
 // The function returns false if a properly serialized bitmap cannot be found.
